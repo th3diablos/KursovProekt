@@ -1,0 +1,408 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+namespace KursovProekt
+{
+
+    public class GObject<T> where T : GObject<T>
+    {
+        public string Name { get; set; }
+
+        public GObject(string name)
+        {
+            this.Name = name;
+        }
+
+        public static T FindGObject(string name, IEnumerable<T> objects)
+        {
+            foreach (T obj in objects)
+            {
+                if (obj.Name == name)
+                {
+                    return obj;
+                }
+            }
+            return null;
+        }
+
+        public static void ListObjects(string objectType, IEnumerable<T> objects)
+        {
+            Console.WriteLine("--- List of all researched " + objectType + " ---");
+            foreach (T obj in objects)
+            {
+                Console.WriteLine(obj.Name);
+            }
+            Console.WriteLine("--- End of " + objectType + " list ---");
+        }
+    }
+
+    public struct GalaxyAge
+    {
+        public double Year { get; set; }
+        public char Unit { get; set; }
+
+        public GalaxyAge(double year, char unit)
+        {
+            Year = year;
+            Unit = unit;
+        }
+
+        public override string ToString() => $"{Year}{Unit}";
+
+        public static GalaxyAge ParseAge(string input)
+        {
+            string yearPart = "";
+            char unit;
+            double year;
+
+            yearPart = input.Substring(0, input.Length - 1);
+            unit = input[input.Length - 1];
+
+            if (!Double.TryParse(yearPart, out year) || (unit != 'M' && unit != 'B'))
+            {
+                throw new FormatException("Wrong format of input!");
+            }
+            return new GalaxyAge(year, unit);
+        }
+    }
+
+    class Galaxy : GObject<Galaxy>
+    {
+        private string type;
+        private GalaxyAge age;
+        public List<Star> Stars { get; } = new List<Star>();
+
+        public Galaxy(string name, string type, GalaxyAge age) : base(name)
+        {
+            this.type = type;
+            this.age = age;
+            this.Stars = new List<Star>();
+        }
+
+        public void AddStar(Star star)
+        {
+            this.Stars.Add(star);
+        }
+
+        public static List<Star> GetStars(List<Galaxy> galaxies)
+        {
+            List<Star> result = new List<Star>();
+            foreach (Galaxy galaxy in galaxies)
+            {
+                foreach (Star star in galaxy.Stars)
+                {
+                    result.Add(star);
+                }
+            }
+            return result;
+        }
+
+        public static List<Planet> GetPlanets(List<Galaxy> galaxies)
+        {
+            List<Planet> result = new List<Planet>();
+            foreach (Star star in Galaxy.GetStars(galaxies))
+            {
+                foreach (Planet planet in star.Planets)
+                {
+                    result.Add(planet);
+                }
+            }
+            return result;
+        }
+
+        public static List<Moon> GetMoons(List<Galaxy> galaxies)
+        {
+            List<Moon> result = new List<Moon>();
+            foreach (Planet planet in Galaxy.GetPlanets(galaxies))
+            {
+                foreach (Moon moon in planet.Moons)
+                {
+                    result.Add(moon);
+                }
+            }
+            return result;
+        }
+
+        public override string ToString()
+        {
+            return "--- Data for " + this.Name + " galaxy ---" + '\n' +
+                   "Type: " + this.type + '\n' +
+                   "Age: " + this.age.ToString() + '\n' +
+                   "Stars: " + '\n' + Star.Print(this.Stars) +
+                   "--- End of data for " + this.Name + " galaxy ---" + '\n';
+        }
+    }
+
+   
+    class Star : GObject<Star>
+    {
+        private char cls;
+        private float mass;
+        private float size;
+        private double temperature;
+        private float luminosity;
+        public List<Planet> Planets { get; } = new List<Planet>();
+
+        public Star(string name, float mass, float size, double temperature, float luminosity) : base(name)
+        {
+            this.cls = FindClass(mass, size, temperature, luminosity);
+            this.mass = mass;
+            this.size = size;
+            this.temperature = temperature;
+            this.luminosity = luminosity;
+            this.Planets = new List<Planet>();
+        }
+
+        private char FindClass(float mass, float size, double temperature, float luminosity)
+        {
+            if (temperature >= 30000 && luminosity >= 30000 && mass >= 16 && size >= 6.6)
+            {
+                return 'O';
+            }
+            else if ((temperature >= 10000 && temperature < 30000) && (luminosity >= 25 && luminosity < 30000) && (mass >= 2.1 && mass < 16) && (size >= 1.8 && size < 6.6))
+            {
+                return 'B';
+            }
+            else if ((temperature >= 7500 && temperature < 10000) && (luminosity >= 5 && luminosity < 25) && (mass >= 1.4 && mass < 2.1) && (size >= 1.4 && size < 1.8))
+            {
+                return 'A';
+            }
+            else if ((temperature >= 6000 && temperature < 7500) && (luminosity >= 1.5 && luminosity < 5) && (mass >= 1.04 && mass < 1.4) && (size >= 1.15 && size < 1.4))
+            {
+                return 'F';
+            }
+            else if ((temperature >= 5200 && temperature < 6000) && (luminosity >= 0.6 && luminosity < 1.5) && (mass >= 0.8 && mass < 1.04) && (size >= 0.96 && size < 1.15))
+            {
+                return 'G';
+            }
+            else if ((temperature >= 3700 && temperature < 5200) && (luminosity >= 0.08 && luminosity < 0.6) && (mass >= 0.45 && mass < 0.8) && (size >= 0.7 && size < 0.96))
+            {
+                return 'K';
+            }
+            else if ((temperature >= 2400 && temperature < 3700) && (luminosity <= 0.08) && (mass >= 0.08 && mass < 0.45) && (size <= 0.7))
+            {
+                return 'M';
+            }
+            else
+            {
+                throw new FormatException("Incorrect data for star!");
+            }
+        }
+
+        public void AddPlanet(Planet planet)
+        {
+            this.Planets.Add(planet);
+        }
+
+        static public Star FindStar(string starName, List<Star> stars)
+        {
+            foreach (Star star in stars)
+            {
+                if (star.Name == starName)
+                {
+                    return star;
+                }
+            }
+            return null;
+        }
+
+        public override string ToString()
+        {
+            return "    - Name: " + this.Name + '\n' +
+                   "      Class: " + this.cls + "(" + this.mass + ", " + this.size + ", " + this.temperature + ", " + this.luminosity + ")" + '\n' +
+                   "      Planets: " + '\n' + Planet.Print(this.Planets);
+        }
+
+        public static string Print(List<Star> stars)
+        {
+            string result = "";
+            foreach (Star star in stars)
+            {
+                result += star.ToString();
+            }
+            return result;
+        }
+    }
+
+    class Planet : GObject<Planet>
+    {
+        private string type;
+        private bool habitable;
+        public List<Moon> Moons { get; } = new List<Moon>();
+
+        public Planet(string name, string type, bool habitable) : base(name)
+        {
+            this.type = type;
+            this.habitable = habitable;
+            this.Moons = new List<Moon>();
+        }
+
+        public void AddMoon(Moon moon)
+        {
+            this.Moons.Add(moon);
+        }
+
+        public static bool Habitable(string input)
+        {
+            bool result = false;
+            input = input.ToLower();
+
+            if (input == "yes")
+            {
+                result = true;
+            }
+            else if (input == "no")
+            {
+                result = false;
+            }
+            else
+            {
+                throw new FormatException("Wrong format of input!");
+            }
+
+            return result;
+        }
+
+        public override string ToString()
+        {
+            return "           o Name: " + this.Name + '\n' +
+                   "             Type: " + this.type + '\n' +
+                   "             Support life: " + this.habitable + '\n' +
+                   "             Moons: " + '\n' + Moon.Print(this.Moons);
+        }
+
+        public static string Print(List<Planet> planets)
+        {
+            string result = "";
+            foreach (Planet planet in planets)
+            {
+                result += planet.ToString();
+            }
+            return result;
+        }
+    }
+
+    class Moon : GObject<Moon>
+    {
+        public Moon(string name) : base(name) { }
+
+        public override string ToString()
+        {
+            return "                ▪ Name" + this.Name + '\n';
+        }
+
+        public static string Print(List<Moon> moons)
+        {
+            string result = "";
+            foreach (Moon moon in moons)
+            {
+                result += moon.ToString();
+            }
+            return result;
+        }
+    }
+
+    class App
+    {
+        static List<Galaxy> galaxies = new List<Galaxy>();
+
+        static void PrintStats()
+        {
+            Console.WriteLine("--- Stats ---");
+            Console.WriteLine("Galaxies: " + galaxies.Count);
+            Console.WriteLine("Stars: " + Galaxy.GetStars(galaxies).Count);
+            Console.WriteLine("Planets: " + Galaxy.GetPlanets(galaxies).Count);
+            Console.WriteLine("Moons: " + Galaxy.GetMoons(galaxies).Count);
+            Console.WriteLine("--- End of stats ---");
+        }
+
+        static void List(string objectsToList)
+        {
+            switch (objectsToList)
+            {
+                case "galaxies": GObject<Galaxy>.ListObjects(objectsToList, galaxies); break;
+                case "stars": GObject<Star>.ListObjects(objectsToList, Galaxy.GetStars(galaxies)); break;
+                case "planets": GObject<Planet>.ListObjects(objectsToList, Galaxy.GetPlanets(galaxies)); break;
+                case "moons": GObject<Moon>.ListObjects(objectsToList, Galaxy.GetMoons(galaxies)); break;
+            }
+
+        }
+
+        static void CreateObject(string typeOfObject, string[] commands, List<String> names)
+        {
+            switch (typeOfObject)
+            {
+                case "galaxy":
+                    galaxies.Add(new Galaxy(names[0], commands[2], GalaxyAge.ParseAge(commands[3])));
+                    break;
+                case "star":
+                    GObject<Galaxy>.FindGObject(names[0], galaxies).AddStar(new Star(names[1], float.Parse(commands[2]), float.Parse(commands[3]), double.Parse(commands[4]), float.Parse(commands[5])));
+                    break;
+                case "planet":
+                    GObject<Star>.FindGObject(names[0], Galaxy.GetStars(galaxies)).AddPlanet(new Planet(names[1], commands[2], Planet.Habitable(commands[3])));
+                    break;
+                case "moon":
+                    GObject<Planet>.FindGObject(names[0], Galaxy.GetPlanets(galaxies)).AddMoon(new Moon(names[1]));
+                    break;
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            string line = "";
+            while (line != "exit")
+            {
+                line = Console.ReadLine();
+
+                List<string> names = new List<string>();
+                List<string> substrings = new List<string>();
+
+                for (int i = 0; i < line.Length; i++)
+                {
+                    string name = "";
+                    if (line[i] == '[')
+                    {
+                        int firstBracketIndex = i, lastBracketIndex = 0;
+                        i++;
+                        while (line[i] != ']')
+                        {
+                            name += line[i];
+                            i++;
+                        }
+                        lastBracketIndex = i;
+                        substrings.Add(line.Substring(firstBracketIndex, lastBracketIndex - firstBracketIndex + 1));
+                        names.Add(name);
+                    }
+                }
+
+                foreach (string sub in substrings)
+                {
+                    line = line.Replace(sub, "");
+                }
+
+                Regex regexTrimmer = new Regex(@"\s\s+");
+                line = regexTrimmer.Replace(line, " ");
+                string[] input = line.Split(' ');
+                string command = input[0];
+
+                switch (command)
+                {
+                    case "add":
+                        App.CreateObject(input[1], input, names);
+                        break;
+                    case "list":
+                        App.List(input[1]);
+                        break;
+                    case "stats":
+                        App.PrintStats();
+                        break;
+                    case "print":
+                        Console.Write(GObject<Galaxy>.FindGObject(names[0], galaxies).ToString());
+                        break;
+                }
+            }
+        }
+    }
+}
